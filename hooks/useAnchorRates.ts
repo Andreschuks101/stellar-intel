@@ -1,6 +1,21 @@
 import useSWR from "swr";
 import type { ApiRatesResponse, RateComparison } from "@/types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+
+type RefreshControl = {
+  pauseRefresh: () => void;
+  resumeRefresh: () => void;
+};
+
+let activeRefreshControl: RefreshControl | null = null;
+
+export function pauseAnchorRatesRefresh() {
+  activeRefreshControl?.pauseRefresh();
+}
+
+export function resumeAnchorRatesRefresh() {
+  activeRefreshControl?.resumeRefresh();
+}
 
 async function fetcher([, corridorId, amount]: [string, string, string]): Promise<RateComparison> {
   const url = new URL("/api/rates", window.location.origin);
@@ -25,6 +40,8 @@ export interface UseAnchorRatesResult {
   error: string | undefined;
   mutate: () => Promise<void>;
   refreshInflight: boolean;
+  pauseRefresh: () => void;
+  resumeRefresh: () => void;
 }
 
 
@@ -33,6 +50,37 @@ export function useAnchorRates(
   amount: string
 ): UseAnchorRatesResult {
   const [refreshInflight, setRefreshInflight] = useState(false);
+  const [refreshPaused, setRefreshPaused] = useState(false);
+  const refreshPausedRef = useRef(refreshPaused);
+
+  const pauseRefresh = useCallback(() => {
+    refreshPausedRef.current = true;
+    setRefreshPaused(true);
+  }, []);
+
+  const resumeRefresh = useCallback(() => {
+    refreshPausedRef.current = false;
+    setRefreshPaused(false);
+  }, []);
+
+  const refreshControlRef = useRef<RefreshControl>({
+    pauseRefresh,
+    resumeRefresh,
+  });
+
+  useEffect(() => {
+    refreshPausedRef.current = refreshPaused;
+  }, [refreshPaused]);
+
+  useEffect(() => {
+    activeRefreshControl = refreshControlRef.current;
+
+    return () => {
+      if (activeRefreshControl === refreshControlRef.current) {
+        activeRefreshControl = null;
+      }
+    };
+  }, []);
 
   const { data, error, isLoading, mutate } = useSWR<
     RateComparison,
@@ -41,14 +89,15 @@ export function useAnchorRates(
     corridorId && amount ? ["/api/rates", corridorId, amount] : null,
     fetcher,
     {
-      refreshInterval: 30_000,
-      revalidateOnFocus: true,
+      refreshInterval: refreshPaused ? 0 : 30_000,
+      revalidateOnFocus: !refreshPaused,
+      revalidateOnReconnect: !refreshPaused,
       dedupingInterval: 5_000,
     }
   );
 
   const refresh = useCallback(async () => {
-    if (refreshInflight) return;
+    if (refreshInflight || refreshPausedRef.current) return;
 
     setRefreshInflight(true);
 
@@ -69,5 +118,7 @@ export function useAnchorRates(
     error: error?.message,
     mutate: refresh,
     refreshInflight,
+    pauseRefresh,
+    resumeRefresh,
   };
 }

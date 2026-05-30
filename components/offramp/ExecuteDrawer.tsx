@@ -6,6 +6,7 @@ import { getResolvedAnchorById } from '@/lib/stellar/anchors';
 import { buildWithdrawPayment, signAndSubmitPayment } from '@/lib/stellar/horizon';
 import type { AnchorRate, ExecuteDrawerStep } from '@/types';
 import { KycIframe } from './KycIframe';
+import { pauseAnchorRatesRefresh, resumeAnchorRatesRefresh } from '@/hooks/useAnchorRates';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -59,6 +60,15 @@ export function ExecuteDrawer({ rate, amount, publicKey, onClose, onExecuteStart
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, step]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    pauseAnchorRatesRefresh();
+    return () => {
+      resumeAnchorRatesRefresh();
+    };
+  }, [isOpen]);
 
   async function handleExecute() {
     if (!rate) return;
