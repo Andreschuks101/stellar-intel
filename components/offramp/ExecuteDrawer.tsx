@@ -33,7 +33,12 @@ interface ExecuteDrawerProps {
   publicKey: string;
   onClose: () => void;
   /** Called once the Stellar payment is submitted; closes the drawer and hands tracking data to the page. */
-  onExecuteStarted: (transactionId: string, transferServer: string, jwt: string) => void;
+  onExecuteStarted: (
+    transactionId: string,
+    transferServer: string,
+    jwt: string,
+    anchorHomeDomain: string
+  ) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -225,7 +230,7 @@ function ExecuteDrawerContent({
       setStep('done');
 
       // Hand tracking data to the page, then close so StatusTracker owns the viewport.
-      onExecuteStarted(transactionId, transferServer, auth.jwt);
+      onExecuteStarted(transactionId, transferServer, auth.jwt, anchor.homeDomain);
       onClose();
     } catch (err) {
       // Freighter is on the wrong network — surface the dedicated
