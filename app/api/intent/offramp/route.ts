@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Asset, Networks, TransactionBuilder, Operation, Memo, BASE_FEE, Account } from '@stellar/stellar-sdk'
 import { hashIntent } from '@/lib/intent/hash'
+import { USDC_ISSUER } from '@/lib/config'
 import type { Intent } from '@/lib/intent/hash'
 import type { ApiError } from '@/types'
 
@@ -84,7 +85,7 @@ function buildUnsignedOfframpTx(
         amount,
       })
     )
-    .addMemo(Memo.text(quoteId.slice(0, 28)))
+    .addMemo(Memo.hash(Buffer.from(quoteId, 'hex')))
     .setTimeout(300)
     .build()
 
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const quoteId = hashIntent(intent)
+  const quoteId = await hashIntent(intent)
   const anchorEntry = ANCHOR_ROUTING[route.corridorId]
 
   if (!anchorEntry) {
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       anchorEntry.anchorAccount,
       intent.amount,
       intent.sourceAsset,
-      'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      USDC_ISSUER,
       quoteId
     )
   } catch (err) {

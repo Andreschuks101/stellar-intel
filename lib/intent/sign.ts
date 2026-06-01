@@ -29,7 +29,7 @@ export async function signIntent(intent: Intent): Promise<SignedIntentEnvelope> 
     )
   })
 
-  const intentHash = hashIntent(intent)
+  const intentHash = await hashIntent(intent)
 
   const signResult = await signMessage(intentHash).catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Sign request failed'

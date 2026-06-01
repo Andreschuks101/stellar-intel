@@ -1,5 +1,3 @@
-import { createHash } from 'crypto'
-
 /** A minimal off-ramp intent that can be deterministically hashed. */
 export interface Intent {
   type: string
@@ -13,17 +11,23 @@ export interface Intent {
 
 /**
  * Serialize an intent to canonical JSON: keys sorted alphabetically,
- * no whitespace, all string values lowercased where they are hex-like.
- * Non-string values are preserved as-is.
+ * no whitespace. Non-string values are preserved as-is.
  */
 export function canonicalJson(intent: Intent): string {
   return JSON.stringify(sortKeys(intent))
 }
 
-/** SHA-256 hash of the canonical JSON, returned as lowercase hex. */
-export function hashIntent(intent: Intent): string {
+/**
+ * SHA-256 hash of the canonical JSON, returned as lowercase hex.
+ * Uses the Web Crypto API so it works in both browser and Node.js 20+.
+ */
+export async function hashIntent(intent: Intent): Promise<string> {
   const canonical = canonicalJson(intent)
-  return createHash('sha256').update(canonical, 'utf8').digest('hex')
+  const encoded = new TextEncoder().encode(canonical)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 function sortKeys(value: unknown): unknown {
