@@ -1,6 +1,5 @@
 ﻿'use client';
 import Image from 'next/image';
-import Image from 'next/image';
 
 import { useMemo } from 'react';
 import { ScoreBadge } from '@/components/ui/ScoreBadge';
